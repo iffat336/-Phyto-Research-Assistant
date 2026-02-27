@@ -71,10 +71,13 @@ def main():
     with st.sidebar:
         st.header("Settings")
         
-        # Check for API Key
-        api_key = os.getenv("OPENAI_API_KEY")
+        # Check for API Key (Support both local .env and Streamlit Secrets)
+        api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
         if not api_key or api_key == "your_api_key_here":
-            st.warning("⚠️ OpenAI API Key is missing in .env")
+            st.warning("⚠️ OpenAI API Key is missing. Please add it to your Secrets (Cloud) or .env (Local).")
+        else:
+            # Set it in the environment so LangChain finds it automatically
+            os.environ["OPENAI_API_KEY"] = api_key
         
         st.divider()
         st.header("Upload Document")
