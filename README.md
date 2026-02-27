@@ -1,5 +1,7 @@
 # 🌱 Phyto-Research Assistant
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=iffat336/-Phyto-Research-Assistant&branch=main&main_module=app.py)
+
 An AI-powered research assistant designed for agricultural scientists to instantly query PDF research papers using **GPT-4o-mini** and Retrieval-Augmented Generation (RAG).
 
 ## 🚀 Features
