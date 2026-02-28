@@ -73,11 +73,15 @@ def main():
         
         # Check for API Key (Support both local .env and Streamlit Secrets)
         api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+        has_api_key = False
+        
         if not api_key or api_key == "your_api_key_here":
-            st.warning("⚠️ OpenAI API Key is missing. Please add it to your Secrets (Cloud) or .env (Local).")
+            st.error("❌ OpenAI API Key is missing.")
+            st.info("💡 **Local:** Add it to your `.env` file.\n\n💡 **Cloud:** Add it to your Streamlit 'Secrets'.")
         else:
-            # Set it in the environment so LangChain finds it automatically
             os.environ["OPENAI_API_KEY"] = api_key
+            st.success("✅ API Key connected.")
+            has_api_key = True
         
         st.divider()
         st.header("Upload Document")
@@ -87,46 +91,54 @@ def main():
             accept_multiple_files=True
         )
         
-        process_button = st.button("Process Documents", use_container_width=True)
+        process_button = st.button("Process Documents", use_container_width=True, disabled=not has_api_key)
         
         if st.button("Clear Chat History", use_container_width=True):
             st.session_state.chat_history = []
+            st.session_state.vectorstore = None
             st.rerun()
 
     if pdf_docs and process_button:
-        with st.spinner("Processing your research papers..."):
-            try:
-                # 1. Extract text from PDFs
-                raw_text = ""
-                for pdf in pdf_docs:
-                    pdf_reader = PdfReader(pdf)
-                    for page in pdf_reader.pages:
-                        if page.extract_text():
-                           raw_text += page.extract_text()
-                
-                if not raw_text:
-                    st.error("Could not extract text from the provided PDFs. They might be scanned images.")
+        if not has_api_key:
+            st.error("Please provide a valid OpenAI API Key in Settings.")
+        else:
+            with st.spinner("Processing your research papers..."):
+                try:
+                    # 1. Extract text from PDFs
+                    raw_text = ""
+                    for pdf in pdf_docs:
+                        try:
+                            pdf_reader = PdfReader(pdf)
+                            for page in pdf_reader.pages:
+                                text = page.extract_text()
+                                if text:
+                                    raw_text += text + "\n"
+                        except Exception as pdf_err:
+                            st.warning(f"⚠️ Could not read {pdf.name}: {pdf_err}")
+                    
+                    if not raw_text.strip():
+                        st.error("❌ Could not extract text from the provided PDFs. They might be empty, encrypted, or scanned images.")
+                        return
+
+                    # 2. Split text into chunks
+                    text_splitter = CharacterTextSplitter(
+                        separator="\n",
+                        chunk_size=1000,
+                        chunk_overlap=200,
+                        length_function=len
+                    )
+                    chunks = text_splitter.split_text(raw_text)
+
+                    # 3. Create vector store embeddings
+                    embeddings = OpenAIEmbeddings()
+                    vectorstore = FAISS.from_texts(texts=chunks, embedding=embeddings)
+                    st.session_state.vectorstore = vectorstore
+                    
+                    st.success("✅ Documents processed successfully! Ask your questions below.")
+                    
+                except Exception as e:
+                    st.error(f"❌ An error occurred during processing: {e}")
                     return
-
-                # 2. Split text into chunks
-                text_splitter = CharacterTextSplitter(
-                    separator="\n",
-                    chunk_size=1000,
-                    chunk_overlap=200,
-                    length_function=len
-                )
-                chunks = text_splitter.split_text(raw_text)
-
-                # 3. Create vector store embeddings
-                embeddings = OpenAIEmbeddings()
-                vectorstore = FAISS.from_texts(texts=chunks, embedding=embeddings)
-                st.session_state.vectorstore = vectorstore
-                
-                st.success("Documents processed successfully! You can now ask questions below.")
-                
-            except Exception as e:
-                st.error(f"An error occurred during processing: {e}")
-                return
 
     # Display Chat History using chat messages
     for message in st.session_state.chat_history:
@@ -135,8 +147,10 @@ def main():
 
     # Chat Input
     if user_question := st.chat_input("Ask a question about your papers..."):
-        if not st.session_state.vectorstore:
-            st.warning("Please upload and process your documents first.")
+        if not has_api_key:
+            st.warning("⚠️ Please configure your OpenAI API Key first.")
+        elif not st.session_state.vectorstore:
+            st.warning("⚠️ Please upload and process your documents first.")
         else:
             # Add user message to chat history
             st.session_state.chat_history.append({"role": "user", "content": user_question})
@@ -161,7 +175,7 @@ def main():
                         st.markdown(answer)
                         st.session_state.chat_history.append({"role": "assistant", "content": answer})
                     except Exception as e:
-                        st.error(f"Error during analysis: {e}")
+                        st.error(f"❌ Error during analysis: {e}")
 
 if __name__ == '__main__':
     main()
