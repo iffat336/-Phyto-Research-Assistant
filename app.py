@@ -1,7 +1,11 @@
 import streamlit as st
 import os
+import io
+import numpy as np
 from dotenv import load_dotenv
 from pypdf import PdfReader
+from pdf2image import convert_from_bytes
+import easyocr
 from langchain_text_splitters import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,6 +14,10 @@ from langchain_community.callbacks.manager import get_openai_callback
 
 # Load environment variables
 load_dotenv()
+
+@st.cache_resource
+def load_ocr_reader():
+    return easyocr.Reader(['en'])
 
 def set_page_config():
     st.set_page_config(
@@ -59,7 +67,7 @@ def main():
     set_page_config()
 
     st.markdown('<p class="main-header">🌱 Phyto-Research Assistant</p>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Upload your agricultural research papers and instantly query their contents using GPT-4o-mini.</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-header">Upload your agricultural research papers (even scanned ones!) and instantly query their contents.</p>', unsafe_allow_html=True)
 
     # Initialize session state
     if "chat_history" not in st.session_state:
@@ -104,20 +112,38 @@ def main():
         else:
             with st.spinner("Processing your research papers..."):
                 try:
+                    # Initialize OCR Reader
+                    reader = load_ocr_reader()
+                    
                     # 1. Extract text from PDFs
                     raw_text = ""
                     for pdf in pdf_docs:
+                        pdf_bytes = pdf.read()
                         try:
-                            pdf_reader = PdfReader(pdf)
+                            # Try standard extraction first
+                            pdf_reader = PdfReader(io.BytesIO(pdf_bytes))
+                            file_text = ""
                             for page in pdf_reader.pages:
-                                text = page.extract_text()
-                                if text:
-                                    raw_text += text + "\n"
+                                page_text = page.extract_text()
+                                if page_text:
+                                    file_text += page_text + "\n"
+                            
+                            # Fallback to OCR if standard extraction yields nothing
+                            if not file_text.strip():
+                                st.info(f"🔍 Scanned PDF detected in {pdf.name}. Starting OCR...")
+                                images = convert_from_bytes(pdf_bytes)
+                                for i, image in enumerate(images):
+                                    # Convert PIL image to numpy array for EasyOCR
+                                    img_array = np.array(image)
+                                    ocr_results = reader.readtext(img_array, detail=0)
+                                    file_text += "\n".join(ocr_results) + "\n"
+                            
+                            raw_text += file_text
                         except Exception as pdf_err:
                             st.warning(f"⚠️ Could not read {pdf.name}: {pdf_err}")
                     
                     if not raw_text.strip():
-                        st.error("❌ Could not extract text from the provided PDFs. They might be empty, encrypted, or scanned images.")
+                        st.error("❌ Could not extract text from the provided PDFs. They might be empty or corrupted.")
                         return
 
                     # 2. Split text into chunks
@@ -176,6 +202,9 @@ def main():
                         st.session_state.chat_history.append({"role": "assistant", "content": answer})
                     except Exception as e:
                         st.error(f"❌ Error during analysis: {e}")
+
+if __name__ == '__main__':
+    main()
 
 if __name__ == '__main__':
     main()

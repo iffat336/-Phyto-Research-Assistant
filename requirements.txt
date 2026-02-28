@@ -7,3 +7,7 @@ python-dotenv>=1.0.1
 faiss-cpu
 tiktoken
 reportlab>=4.1.0
+easyocr
+opencv-python-headless
+pdf2image
+numpy
