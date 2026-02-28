@@ -79,17 +79,27 @@ def main():
     with st.sidebar:
         st.header("Settings")
         
-        # Check for API Key (Support both local .env and Streamlit Secrets)
-        api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-        has_api_key = False
+        # 1. Try to get key from secrets or env
+        env_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+        if env_key == "your_api_key_here":
+            env_key = None
+            
+        # 2. Provide a fallback input field in the UI
+        api_key_input = st.text_input(
+            "Enter OpenAI API Key", 
+            value=env_key if env_key else "", 
+            type="password",
+            help="Your key is stored only for this session."
+        )
         
-        if not api_key or api_key == "your_api_key_here":
-            st.error("❌ OpenAI API Key is missing.")
-            st.info("💡 **Local:** Add it to your `.env` file.\n\n💡 **Cloud:** Add it to your Streamlit 'Secrets'.")
-        else:
-            os.environ["OPENAI_API_KEY"] = api_key
+        has_api_key = False
+        if api_key_input:
+            os.environ["OPENAI_API_KEY"] = api_key_input
             st.success("✅ API Key connected.")
             has_api_key = True
+        else:
+            st.error("❌ OpenAI API Key is missing.")
+            st.info("💡 Paste your key above or add it to Streamlit Secrets.")
         
         st.divider()
         st.header("Upload Document")
@@ -202,9 +212,6 @@ def main():
                         st.session_state.chat_history.append({"role": "assistant", "content": answer})
                     except Exception as e:
                         st.error(f"❌ Error during analysis: {e}")
-
-if __name__ == '__main__':
-    main()
 
 if __name__ == '__main__':
     main()
