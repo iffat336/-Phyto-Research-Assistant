@@ -224,7 +224,7 @@ def main():
                     return
 
     # Main Interface Layout with Tabs
-    chat_tab, matrix_tab, tools_tab = st.tabs(["💬 Research Chat", "📊 Literature Matrix", "🎓 Educator Tools"])
+    chat_tab, matrix_tab, tools_tab = st.tabs(["Research Chat", "Literature Matrix", "Educator Tool"])
 
     with chat_tab:
         # Display Chat History using chat messages
