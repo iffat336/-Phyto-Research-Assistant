@@ -394,6 +394,65 @@ def main():
                         st.markdown(resp.content)
 
             st.divider()
+
+            # --- Section 4: Premium "Gold" Features ---
+            st.subheader("🏆 Premium Academic Suite")
+            col7, col8 = st.columns(2)
+            
+            with col7:
+                if st.button("👺 Simulate Reviewer 2 Critique", use_container_width=True):
+                    with st.spinner("Reviewer 2 is typing..."):
+                        docs = st.session_state.vectorstore.similarity_search("methodology results conclusion", k=6)
+                        context = "\n".join([d.page_content for d in docs])
+                        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.8)
+                        prompt = ChatPromptTemplate.from_template(
+                            "You are 'Reviewer 2', a notoriously harsh and hyper-critical academic peer reviewer. "
+                            "Critique the following research documents with professional but brutal honesty. "
+                            "Focus on flaws in logic, insufficient data, and questionable conclusions.\n\n{context}"
+                        )
+                        resp = (prompt | llm).invoke({"context": context})
+                        st.markdown("### 👺 Reviewer 2 Peer Review")
+                        st.error(resp.content)
+            
+            with col8:
+                if st.button("☁️ Generate Keyword WordCloud", use_container_width=True):
+                    with st.spinner("Visualizing keywords..."):
+                        from wordcloud import WordCloud
+                        import matplotlib.pyplot as plt
+                        
+                        # Get text for wordcloud
+                        docs = st.session_state.vectorstore.similarity_search("main topics keywords research area", k=10)
+                        text = " ".join([d.page_content for d in docs])
+                        
+                        wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='Greens').generate(text)
+                        
+                        fig, ax = plt.subplots(figsize=(10, 5))
+                        ax.imshow(wordcloud, interpolation='bilinear')
+                        ax.axis("off")
+                        st.pyplot(fig)
+                        st.caption("Visual map of the most frequent research terms in your documents.")
+
+            st.divider()
+            
+            # Excel Export for Matrix
+            if st.session_state.matrix_data:
+                import pandas as pd
+                from io import BytesIO
+                
+                df = pd.DataFrame(st.session_state.matrix_data)
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Research_Matrix')
+                
+                st.download_button(
+                    label="📥 Download Matrix as Excel (Gold Feature)",
+                    data=output.getvalue(),
+                    file_name="Phyto_Research_Matrix.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+
+            st.divider()
             if st.button("📚 Export References (APA/BibTeX)", use_container_width=True):
                 with st.spinner("Formatting references..."):
                     llm = ChatOpenAI(model_name="gpt-4o-mini")
