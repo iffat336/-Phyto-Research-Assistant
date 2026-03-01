@@ -6,6 +6,9 @@ pypdf>=4.1.0
 python-dotenv>=1.0.1
 faiss-cpu
 tiktoken
+easyocr
+opencv-python-headless
+pdf2image
 xlsxwriter
 wordcloud
 matplotlib
