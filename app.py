@@ -90,13 +90,29 @@ def main():
             value=env_key if env_key else "", 
             type="password",
             help="Your key is stored only for this session."
-        )
+        ).strip()
         
         has_api_key = False
         if api_key_input:
-            os.environ["OPENAI_API_KEY"] = api_key_input
-            st.success("✅ API Key connected.")
-            has_api_key = True
+            if not api_key_input.startswith("sk-"):
+                st.error("❌ Invalid Key Format: OpenAI keys usually start with 'sk-'.")
+            else:
+                os.environ["OPENAI_API_KEY"] = api_key_input
+                st.success("✅ API Key connected.")
+                has_api_key = True
+                
+                # Test Connection Button
+                if st.button("Test API Connection", use_container_width=True):
+                    with st.spinner("Testing connection..."):
+                        try:
+                            # Use a minimal request to test the key
+                            test_llm = ChatOpenAI(model_name="gpt-4o-mini", max_tokens=5)
+                            test_llm.invoke("Hi")
+                            st.success("🎉 Connection Successful!")
+                        except Exception as test_err:
+                            st.error(f"❌ Connection Failed: {test_err}")
+                            if "insufficient_quota" in str(test_err).lower():
+                                st.info("💡 **Tip:** Your API key might have run out of credit or quota.")
         else:
             st.error("❌ OpenAI API Key is missing.")
             st.info("💡 Paste your key above or add it to Streamlit Secrets.")
