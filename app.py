@@ -322,5 +322,19 @@ def main():
                         st.markdown("### 🔍 Future Research Opportunities")
                         st.markdown(gap_resp.content)
 
+            st.divider()
+            if st.button("📚 Export References (APA/BibTeX)", use_container_width=True):
+                with st.spinner("Formatting references..."):
+                    llm = ChatOpenAI(model_name="gpt-4o-mini")
+                    refs = []
+                    for entry in st.session_state.matrix_data:
+                        ref_prompt = f"Create a standard APA citation and a BibTeX entry for a paper titled '{entry['Title']}'. If you can guess more info from common phyto-research context, do so, else use placeholders."
+                        ref_resp = llm.invoke(ref_prompt)
+                        refs.append(f"### {entry['Source']}\n{ref_resp.content}")
+                    
+                    st.markdown("## 📑 Academic References")
+                    st.markdown("\n\n".join(refs))
+                    st.download_button("Download References", "\n\n".join(refs), file_name="references.txt")
+
 if __name__ == '__main__':
     main()
