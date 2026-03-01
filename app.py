@@ -285,18 +285,18 @@ def main():
             st.caption("Auto-generated based on uploaded research papers.")
 
     with tools_tab:
-        st.header("🎓 Educator Tools")
+        st.header("Educator Tool")
         if not st.session_state.vectorstore:
             st.info("Upload documents to enable assessment and analysis tools.")
         else:
+            # --- Section 1: Teaching & Assessment ---
+            st.subheader("📚 Teaching & Assessment")
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("📝 Generate Student Quiz", use_container_width=True):
                     with st.spinner("Preparing quiz..."):
-                        # Get some diverse context for the quiz
                         quiz_docs = st.session_state.vectorstore.similarity_search("core concepts and definitions", k=5)
                         quiz_context = "\n".join([d.page_content for d in quiz_docs])
-                        
                         llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.7)
                         quiz_prompt = ChatPromptTemplate.from_template(
                             "Create 3 Multiple Choice Questions (MCQs) for university students based on this research:\n\n{context}\n\n"
@@ -307,20 +307,91 @@ def main():
                         st.markdown(quiz_resp.content)
             
             with col2:
+                if st.button("💡 Summarize for Students", use_container_width=True):
+                    with st.spinner("Creating student notes..."):
+                        docs = st.session_state.vectorstore.similarity_search("overall summary key points", k=5)
+                        context = "\n".join([d.page_content for d in docs])
+                        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+                        prompt = ChatPromptTemplate.from_template(
+                            "Summarize this research for undergraduate students. Use simple language and clear bullet points.\n\n{context}"
+                        )
+                        resp = (prompt | llm).invoke({"context": context})
+                        st.markdown("### 💡 Teaching Notes")
+                        st.markdown(resp.content)
+
+            st.divider()
+
+            # --- Section 2: Advanced Research Analysis ---
+            st.subheader("🔬 Advanced Research Analysis")
+            col3, col4 = st.columns(2)
+            with col3:
+                if st.button("🔬 Audit Research Quality", use_container_width=True):
+                    with st.spinner("Auditing methodology..."):
+                        # Query specifically for methodology and limitations
+                        audit_docs = st.session_state.vectorstore.similarity_search("materials and methods methodology statistical analysis limitations", k=5)
+                        audit_context = "\n".join([d.page_content for d in audit_docs])
+                        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+                        audit_prompt = ChatPromptTemplate.from_template(
+                            "Critically evaluate the research methodology in these documents. Identify potential biases, statistical weaknesses, or missing control groups.\n\n{context}"
+                        )
+                        audit_resp = (audit_prompt | llm).invoke({"context": audit_context})
+                        st.markdown("### 🔬 Critical Research Audit")
+                        st.markdown(audit_resp.content)
+            
+            with col4:
                 if st.button("🔍 Find Research Gaps", use_container_width=True):
                     with st.spinner("Analyzing gaps..."):
-                        # Query specifically for limitations and gaps
                         gap_docs = st.session_state.vectorstore.similarity_search("limitations future research goals gaps unanswered questions", k=5)
                         gap_context = "\n".join([d.page_content for d in gap_docs])
-                        
                         llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
                         gap_prompt = ChatPromptTemplate.from_template(
-                            "Based on the following research documents, identify 3 'Research Gaps' or opportunities for future studies. "
-                            "Suggest these as potential PhD or Master's thesis topics.\n\n{context}"
+                            "Based on the research, identify 3 'Research Gaps' and suggest them as potential PhD or Master's thesis topics.\n\n{context}"
                         )
                         gap_resp = (gap_prompt | llm).invoke({"context": gap_context})
                         st.markdown("### 🔍 Future Research Opportunities")
                         st.markdown(gap_resp.content)
+
+            if st.button("📑 Cross-Paper Synthesis", use_container_width=True):
+                with st.spinner("Synthesizing evidence..."):
+                    llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+                    synth_prompt = "Generate a 3-paragraph literature review synthesis combining the main arguments from all uploaded documents."
+                    # We use the whole vectorstore search for broad context
+                    synth_docs = st.session_state.vectorstore.similarity_search("summary of findings across all papers", k=8)
+                    synth_context = "\n".join([d.page_content for d in synth_docs])
+                    resp = (ChatPromptTemplate.from_template(synth_prompt + "\n\nContext: {context}") | llm).invoke({"context": synth_context})
+                    st.markdown("### 📑 Literature Review Synthesis")
+                    st.markdown(resp.content)
+
+            st.divider()
+
+            # --- Section 3: Dissemination & Funding ---
+            st.subheader("📢 Dissemination & Funding")
+            col5, col6 = st.columns(2)
+            with col5:
+                if st.button("🌍 Plain English Summary", use_container_width=True):
+                    with st.spinner("Translating to plain English..."):
+                        docs = st.session_state.vectorstore.similarity_search("plain English public impact", k=5)
+                        context = "\n".join([d.page_content for d in docs])
+                        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+                        prompt = ChatPromptTemplate.from_template(
+                            "Rewrite this research for the general public. Avoid technical jargon and focus on real-world impact.\n\n{context}"
+                        )
+                        resp = (prompt | llm).invoke({"context": context})
+                        st.markdown("### 🌍 Public Summary")
+                        st.markdown(resp.content)
+            
+            with col6:
+                if st.button("💰 Grant Justification", use_container_width=True):
+                    with st.spinner("Drafting grant reasoning..."):
+                        docs = st.session_state.vectorstore.similarity_search("unanswered questions future research need for funding", k=5)
+                        context = "\n".join([d.page_content for d in docs])
+                        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+                        prompt = ChatPromptTemplate.from_template(
+                            "Write a formal 'Research Justification' for a grant application, explaining why further funding is critical based on the gaps identified in this work.\n\n{context}"
+                        )
+                        resp = (prompt | llm).invoke({"context": context})
+                        st.markdown("### 💰 Grant Justification")
+                        st.markdown(resp.content)
 
             st.divider()
             if st.button("📚 Export References (APA/BibTeX)", use_container_width=True):
